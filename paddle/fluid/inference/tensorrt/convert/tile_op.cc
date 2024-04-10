@@ -23,7 +23,6 @@ class TileOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(7000)
     VLOG(3) << "convert a tile op to tensorrt tile layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -34,31 +33,21 @@ class TileOpConverter : public OpConverter {
     auto rank = input_shape.nbDims;
     auto output_name = op_desc.Output("Out")[0];
 
-    if (engine_->with_dynamic_shape()) {
-      auto input_shape_tensor = Shape(input);
+    auto input_shape_tensor = Shape(input);
 
-      nvinfer1::ITensor* repeat_tensor = nullptr;
-      int32_t repeat_rank = 0;
-      if (inputs.find("RepeatTimes") != inputs.end() &&
-          !op_desc.Input("RepeatTimes").empty()) {
-        repeat_tensor = engine_->GetITensor(op_desc.Input("RepeatTimes")[0]);
-        repeat_rank = repeat_tensor->getDimensions().d[0];
-      } else if (inputs.find("repeat_times_tensor") != inputs.end() &&
-                 !op_desc.Input("repeat_times_tensor").empty()) {
-        int32_t repeat_size = op_desc.Input("repeat_times_tensor").size();
-        std::vector<nvinfer1::ITensor*> repeat_tensors;
-        for (int32_t i = 0; i < repeat_size; ++i) {
-          repeat_tensors.push_back(
-              engine_->GetITensor(op_desc.Input("repeat_times_tensor")[i]));
-        }
-        repeat_tensor = Concat(repeat_tensors);
-        repeat_rank = repeat_size;
-      } else {
-        std::vector<int32_t> repeat_times = PADDLE_GET_CONST(
-            std::vector<int32_t>, op_desc.GetAttr("repeat_times"));
-        repeat_tensor =
-            Add1DConstantLayer(repeat_times, output_name + "_shape_tensor_");
-        repeat_rank = repeat_times.size();
+    nvinfer1::ITensor* repeat_tensor = nullptr;
+    int32_t repeat_rank = 0;
+    if (inputs.find("RepeatTimes") != inputs.end() &&
+        !op_desc.Input("RepeatTimes").empty()) {
+      repeat_tensor = engine_->GetITensor(op_desc.Input("RepeatTimes")[0]);
+      repeat_rank = repeat_tensor->getDimensions().d[0];
+    } else if (inputs.find("repeat_times_tensor") != inputs.end() &&
+               !op_desc.Input("repeat_times_tensor").empty()) {
+      int32_t repeat_size = op_desc.Input("repeat_times_tensor").size();
+      std::vector<nvinfer1::ITensor*> repeat_tensors;
+      for (int32_t i = 0; i < repeat_size; ++i) {
+        repeat_tensors.push_back(
+            engine_->GetITensor(op_desc.Input("repeat_times_tensor")[i]));
       }
 
       nvinfer1::ITensor* repeat_expand_tensor;
@@ -144,7 +133,35 @@ class TileOpConverter : public OpConverter {
       ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
     }
 
+    nvinfer1::ITensor* repeat_expand_tensor;
+    if (rank > repeat_rank) {
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(rank - repeat_rank, 1),
+                             output_name + "_one_rank_tensor_");
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(repeat_tensor);
+      repeat_expand_tensor = Concat(itensors);
+    } else {
+      repeat_expand_tensor = repeat_tensor;
+    }
+    auto output_shape_tensor = Prod(input_shape_tensor, repeat_expand_tensor);
+    auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                      Slice,
+                                      *input,
+                                      nvinfer1::Dims{},
+                                      nvinfer1::Dims{},
+                                      nvinfer1::Dims{});
+
+    layer->setInput(1, *start_tensor);
+    layer->setInput(2, *output_shape_tensor);
+    layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(10000)
+    layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
+    layer->setMode(nvinfer1::SliceMode::kWRAP);
 #endif
+    RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
   }
 };
 
