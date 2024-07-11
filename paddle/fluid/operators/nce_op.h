@@ -444,5 +444,26 @@ class NCEGradKernel : public framework::OpKernel<T> {
     delete sampler;
   }
 };
+
+template <typename T, typename Context>
+void NceKernel(const Context &dev_ctx,
+               const DenseTensor &input,
+               const DenseTensor &label,
+               const DenseTensor &weight,
+               const DenseTensor &bias,
+               const DenseTensor &sample_weight,
+               const DenseTensor &custom_dist_probs,
+               const DenseTensor &custom_dist_alias,
+               const DenseTensor &custom_dist_alias_probs,
+               int num_total_classes,
+               int num_neg_samples,
+               int sampler,
+               int seed,
+               bool is_sparse,
+               bool remote_prefetch,
+               bool is_test,
+               DenseTensor *cost,
+               DenseTensor *sample_logits,
+               DenseTensor *sample_labels);
 }  // namespace operators
 }  // namespace paddle
