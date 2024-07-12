@@ -3458,6 +3458,7 @@ USE_TRT_CONVERTER(size);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 USE_TRT_CONVERTER(einsum)
+USE_TRT_CONVERTER(put_along_axis);
 #endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
