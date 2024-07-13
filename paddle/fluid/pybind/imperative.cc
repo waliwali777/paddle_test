@@ -134,8 +134,8 @@ static const phi::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<phi::GPUPinnedPlace>();
   } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
     return place_obj.cast<phi::IPUPlace>();
-  } else if (py::isinstance<platform::Place>(place_obj)) {
-    return place_obj.cast<platform::Place>();
+  } else if (py::isinstance<phi::Place>(place_obj)) {
+    return place_obj.cast<phi::Place>();
   } else if (py::isinstance<phi::CustomPlace>(place_obj)) {
     return place_obj.cast<phi::CustomPlace>();
   } else {
@@ -435,10 +435,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
         if (blocking) {
-          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          phi::DeviceContextPool::Instance().Get(dst_device)->Wait();
           auto src_device = src_tensor.place();
           if (!(src_device == dst_device)) {
-            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+            phi::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
       } else if (src->Var().IsType<phi::SelectedRows>()) {
@@ -451,10 +451,10 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
                               dst_device,
                               dst_selected_rows->mutable_value());
         if (blocking) {
-          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          phi::DeviceContextPool::Instance().Get(dst_device)->Wait();
           auto src_device = src_selected_rows.value().place();
           if (!(src_device == dst_device)) {
-            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+            phi::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
       }
@@ -720,7 +720,7 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::Place>(obj)) {
+            } else if (py::isinstance<phi::Place>(obj)) {
               auto p = obj.cast<phi::Place *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
@@ -834,7 +834,7 @@ void BindImperative(py::module *m_ptr) {
             self.nrings_ = nrings;
           });
 
-  m.def("varbase_copy", &VarBaseCopy<platform::Place>);
+  m.def("varbase_copy", &VarBaseCopy<phi::Place>);
   m.def("varbase_copy", &VarBaseCopy<phi::CPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::GPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
