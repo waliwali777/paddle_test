@@ -4662,8 +4662,13 @@ void RmsNormInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaTensor* residual_out,
                       MetaTensor* inv_var) {
+  VLOG(1) << "RmsNormInferMeta: begin_norm_axis: " << begin_norm_axis;
   std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
+  VLOG(1) << "RmsNormInferMeta: x_dims_size: " << x_dims_size;
+  for (size_t i = size_t(0); i < static_cast<size_t>(x_dims_size); i++) {
+    VLOG(1) << "RmsNormInferMeta: x_dims_vec[" << i << "] = " << x_dims_vec[i];
+  }
 
   size_t normalized_dims = 1;
   for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
@@ -4674,12 +4679,14 @@ void RmsNormInferMeta(const MetaTensor& x,
   for (size_t i = size_t(0); i < static_cast<size_t>(begin_norm_axis); i++) {
     inv_var_dims.push_back(x_dims_vec[i]);
   }
+  VLOG(1) << "RmsNormInferMeta: normalized_dims: " << normalized_dims;
+  VLOG(1) << "Norm_Weight Shape: " << norm_weight.dims()[0];
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
                     phi::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be"
-                        "the size of Weight, but received"
-                        "normalized size of Input(X) is [%d], received size"
+                        "The normalized size of Input(X) must equal to be "
+                        "the size of Weight, but received "
+                        "normalized size of Input(X) is [%d], received size "
                         "of Weight is [%d]",
                         normalized_dims,
                         norm_weight.dims()[0]));
@@ -4706,16 +4713,20 @@ void RmsNormInferMeta(const MetaTensor& x,
     inv_var->set_layout(x.layout());
   }
 
-  residual_out->set_dims(out_dims);
-  residual_out->set_dtype(x.dtype());
-  residual_out->set_layout(x.layout());
-  residual_out->share_lod(x);
+  if (residual != nullptr) {
+    residual_out->set_dims(out_dims);
+    residual_out->set_dtype(x.dtype());
+    residual_out->set_layout(x.layout());
+    residual_out->share_lod(x);
+  }
 }
 
 void RmsNormGradInferMeta(const MetaTensor& x,
                           const MetaTensor& norm_weight,
+                          const MetaTensor& norm_bias,
                           MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad) {
+                          MetaTensor* norm_weight_grad,
+                          MetaTensor* norm_bias_grad) {
   x_grad->set_dtype(x.dtype());
   x_grad->set_layout(x.layout());
   x_grad->share_lod(x);
@@ -4725,6 +4736,13 @@ void RmsNormGradInferMeta(const MetaTensor& x,
   norm_weight_grad->set_layout(norm_weight.layout());
   norm_weight_grad->share_lod(norm_weight);
   norm_weight_grad->set_dims(norm_weight.dims());
+
+  if (norm_bias_grad != nullptr) {
+    norm_bias_grad->set_dtype(norm_bias.dtype());
+    norm_bias_grad->set_layout(norm_bias.layout());
+    norm_bias_grad->share_lod(norm_bias);
+    norm_bias_grad->set_dims(norm_bias.dims());
+  }
 }
 
 void RmspropInferMeta(const MetaTensor& param,
