@@ -374,6 +374,26 @@
     data_type : x
   optional : bias0, scale, bias1, mean, variance
 
+- op : fused_gate_attention
+  args: (Tensor query, Tensor key, Tensor query_weight, Tensor key_weight, Tensor
+    value_weight, Tensor qkv_weight, Tensor nonbatched_bias, Tensor src_mask, Tensor
+    gate_weight, Tensor gate_bias, Tensor out_linear_weight, Tensor out_linear_bias,
+    bool has_gating = true, bool merge_qkv = true, bool use_flash_attn = false)
+  output: Tensor (query_transpose_out), Tensor (key_transpose_out), Tensor (value_transpose_out),
+    Tensor (qkv_transpose_out), Tensor (softmax_out), Tensor (softmax_lse), Tensor
+    (fmha_out), Tensor (gate_out), Tensor (out)
+  infer_meta:
+    func: FusedGateAttentionInferMeta
+  kernel:
+    func: fused_gate_attention
+  optional: key, query_weight, key_weight, value_weight, qkv_weight, nonbatched_bias,
+    gate_weight, gate_bias, query_transpose_out, key_transpose_out, value_transpose_out,
+    qkv_transpose_out, softmax_lse, gate_out
+  intermediate: query_transpose_out, key_transpose_out, value_transpose_out, qkv_transpose_out,
+    softmax_out, softmax_lse, fmha_out, gate_out
+  backward: fused_gate_attention_grad
+  support_dygraph_mode : true
+
 - op : fused_linear_param_grad_add
   args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)
