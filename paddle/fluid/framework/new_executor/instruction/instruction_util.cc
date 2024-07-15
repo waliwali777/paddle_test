@@ -60,6 +60,10 @@ std::vector<int> GetValueIds(pir::Value value,
   return ids;
 }
 
+bool IsPir(pir::Operation* op) { return true; }
+
+bool IsPir(framework::OperatorBase* op) { return false; }
+
 platform::DeviceContext* ParseDeviceContext(
     pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
@@ -133,6 +137,26 @@ platform::DeviceContext* ParseDeviceContext(
                       ->dev_context();
       }
       return dev_ctx;
+    }
+    if (FLAGS_dynamic_static_unified_comm) {
+      if (op_attributes.count("ring_id") != 0) {
+        int ring_id =
+            op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        if (comm_context_manager.Has(std::to_string(ring_id))) {
+          auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+          static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+              ->GetDevContext()
+              ->SetCommContext(comm_context);
+          if (IsPir(op)) {
+            return dev_ctx;
+          }
+        } else {
+          VLOG(10) << "ring_id " << ring_id
+                   << " not found in comm_context_manager for op " << op_name;
+        }
+      }
     }
 #endif
   }
