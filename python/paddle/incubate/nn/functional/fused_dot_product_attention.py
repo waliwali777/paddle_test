@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from paddle import Tensor, _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
@@ -128,11 +130,11 @@ def fused_dot_product_attention(
     query: Tensor,
     key: Tensor,
     value: Tensor,
-    attn_mask: Tensor = None,
+    attn_mask: Tensor | None = None,
     dropout_p: float = 0.0,
     is_causal: bool = False,
-    scaling_factor: float = None,
     training: bool = True,
+    scaling_factor: float | None = None,
     name: str = None,
 ):
     r"""
@@ -152,12 +154,12 @@ def fused_dot_product_attention(
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float16 or bfloat16.
-        attn_mask(Tensor,optional): A float mask of the same type as query,
+        attn_mask(Tensor|None, optional): A float mask of the same type as query,
                 key, value that is added to the attention score.
         dropout_p (float): The dropout probability.
         is_causal (bool): A flag indicating whether it is causal masking or not. If True, the mask will be ignored.
-        scaling_factor (float): The scaling factor for the attention scores.
         training (bool): A flag indicating whether it is in train phrase or not.
+        scaling_factor (float|None, optional): The scaling factor for the attention scores.
         name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
