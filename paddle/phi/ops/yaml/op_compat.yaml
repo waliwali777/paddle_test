@@ -14,6 +14,21 @@
 #   extra :
 #     attrs : [bool is_test = false]
 
+#- op : legacy_reshape (reshape)
+#  backward : legacy_reshape_grad (reshape_grad)
+#  inputs:
+#    x : X
+#  outputs:
+#    out : Out
+#    xshape: XShape
+#  int_array:
+#    shape :
+#      data_type : int
+#      tensor_name : Shape
+#      tensors_name : ShapeTensor
+#  extra :
+#    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+
 - op : abs
   backward : abs_grad, abs_double_grad, abs_triple_grad
   inputs :
